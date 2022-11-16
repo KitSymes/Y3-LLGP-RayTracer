@@ -144,6 +144,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Tracker.cpp" />
+    <ClCompile Include="TrackerManager.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tracker.h" />
+    <ClInclude Include="TrackerManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

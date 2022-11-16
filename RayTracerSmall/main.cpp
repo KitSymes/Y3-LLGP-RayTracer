@@ -35,6 +35,8 @@
 #include <json.hpp>
 #include <thread>
 #include <chrono>
+#include <mutex>
+#include "TrackerManager.h"
 
 #if defined __linux__ || defined __APPLE__
 // "Compiled for Linux
@@ -43,6 +45,19 @@
 #define M_PI 3.141592653589793
 #define INFINITY 1e8
 #endif
+
+struct Header
+{
+	int size;
+	Header* prev;
+	Header* next;
+	Tracker* tracker;
+};
+
+struct Footer
+{
+	int reserved;
+};
 
 template<typename T>
 class Vec3
@@ -129,18 +144,6 @@ public:
 
 		return true;
 	}
-};
-
-struct Header
-{
-	int size;
-	Header* pPrev;
-	Header* pNext;
-};
-
-struct Footer
-{
-	int reserved;
 };
 
 //[comment]
@@ -264,6 +267,7 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 	float invWidth = 1 / float(width), invHeight = 1 / float(height);
 	float fov = 30, aspectratio = width / float(height);
 	float angle = tan(M_PI * 0.5 * fov / 180.);
+
 	// Trace rays
 	for (unsigned y = 0; y < height; ++y) {
 		for (unsigned x = 0; x < width; ++x, ++pixel) {
@@ -274,6 +278,7 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 			*pixel = trace(Vec3f(0), raydir, spheres, 0);
 		}
 	}
+
 	// Save result to a PPM image (keep these flags if you compile under Windows)
 	std::stringstream ss;
 	ss << "./spheres" << iteration << ".ppm";
@@ -316,11 +321,6 @@ void BasicRender()
 
 	LoadScene(spheres);
 
-	/*spheres.push_back(Sphere(Vec3f(0.0, -10004, -20),	10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-	spheres.push_back(Sphere(Vec3f(0.0, 0, -20),		4, Vec3f(1.00, 0.32, 0.36),		1, 0.5)); // The radius paramter is the value we will change
-	spheres.push_back(Sphere(Vec3f(5.0, -1, -15),		2, Vec3f(0.90, 0.76, 0.46),		1, 0.0));
-	spheres.push_back(Sphere(Vec3f(5.0, 0, -25),		3, Vec3f(0.65, 0.77, 0.97),		1, 0.0));*/
-
 	// This creates a file, titled 1.ppm in the current working directory
 	render(spheres, 1);
 
@@ -331,43 +331,6 @@ void SimpleShrinking()
 	std::vector<Sphere> spheres;
 	std::vector<std::thread> renderThreads;
 	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
-
-	/*for (int i = 0; i < 4; i++)
-	{
-		if (i == 0)
-		{
-			spheres.push_back(Sphere(Vec3f(0.0, -10004, -20), 10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-			spheres.push_back(Sphere(Vec3f(0.0, 0, -20), 4, Vec3f(1.00, 0.32, 0.36), 1, 0.5)); // The radius paramter is the value we will change
-			spheres.push_back(Sphere(Vec3f(5.0, -1, -15), 2, Vec3f(0.90, 0.76, 0.46), 1, 0.0));
-			spheres.push_back(Sphere(Vec3f(5.0, 0, -25), 3, Vec3f(0.65, 0.77, 0.97), 1, 0.0));
-
-		}
-		else if (i == 1)
-		{
-			spheres.push_back(Sphere(Vec3f(0.0, -10004, -20), 10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-			spheres.push_back(Sphere(Vec3f(0.0, 0, -20), 3, Vec3f(1.00, 0.32, 0.36), 1, 0.5)); // Radius--
-			spheres.push_back(Sphere(Vec3f(5.0, -1, -15), 2, Vec3f(0.90, 0.76, 0.46), 1, 0.0));
-			spheres.push_back(Sphere(Vec3f(5.0, 0, -25), 3, Vec3f(0.65, 0.77, 0.97), 1, 0.0));
-		}
-		else if (i == 2)
-		{
-			spheres.push_back(Sphere(Vec3f(0.0, -10004, -20), 10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-			spheres.push_back(Sphere(Vec3f(0.0, 0, -20), 2, Vec3f(1.00, 0.32, 0.36), 1, 0.5)); // Radius--
-			spheres.push_back(Sphere(Vec3f(5.0, -1, -15), 2, Vec3f(0.90, 0.76, 0.46), 1, 0.0));
-			spheres.push_back(Sphere(Vec3f(5.0, 0, -25), 3, Vec3f(0.65, 0.77, 0.97), 1, 0.0));
-		}
-		else if (i == 3)
-		{
-			spheres.push_back(Sphere(Vec3f(0.0, -10004, -20), 10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-			spheres.push_back(Sphere(Vec3f(0.0, 0, -20), 1, Vec3f(1.00, 0.32, 0.36), 1, 0.5)); // Radius--
-			spheres.push_back(Sphere(Vec3f(5.0, -1, -15), 2, Vec3f(0.90, 0.76, 0.46), 1, 0.0));
-			spheres.push_back(Sphere(Vec3f(5.0, 0, -25), 3, Vec3f(0.65, 0.77, 0.97), 1, 0.0));
-		}
-
-		render(spheres, i);
-		// Dont forget to clear the Vector holding the spheres.
-		spheres.clear();
-	}*/
 
 	LoadScene(spheres);
 
@@ -408,18 +371,6 @@ void SmoothScaling()
 	std::vector<std::thread> renderThreads;
 	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
 
-	/*for (float r = 0; r <= 100; r++)
-	{
-		spheres.push_back(Sphere(Vec3f(0.0, -10004, -20), 10000, Vec3f(0.20, 0.20, 0.20), 0, 0.0));
-		spheres.push_back(Sphere(Vec3f(0.0, 0, -20), r / 100, Vec3f(1.00, 0.32, 0.36), 1, 0.5)); // Radius++ change here
-		spheres.push_back(Sphere(Vec3f(5.0, -1, -15), 2, Vec3f(0.90, 0.76, 0.46), 1, 0.0));
-		spheres.push_back(Sphere(Vec3f(5.0, 0, -25), 3, Vec3f(0.65, 0.77, 0.97), 1, 0.0));
-		render(spheres, r);
-		std::cout << "Rendered and saved spheres" << r << ".ppm" << std::endl;
-		// Dont forget to clear the Vector holding the spheres.
-		spheres.clear();
-	}*/
-
 	LoadScene(spheres);
 
 	for (float r = 0; r <= 100; r++)
@@ -446,14 +397,14 @@ int main(int argc, char** argv)
 	//SimpleShrinking();
 	//SmoothScaling();
 
-	
+
 	using std::chrono::high_resolution_clock;
 	using std::chrono::duration_cast;
 	using std::chrono::duration;
 	using std::chrono::milliseconds;
 
 	auto t1 = high_resolution_clock::now();
-	SmoothScaling();;
+	BasicRender();;
 	auto t2 = high_resolution_clock::now();
 
 	// Getting number of milliseconds as an integer.
@@ -464,7 +415,7 @@ int main(int argc, char** argv)
 
 	std::cout << ms_int.count() << "ms\n";
 	std::cout << ms_double.count() << "ms\n";
-	
+
 
 	return 0;
 }
@@ -472,11 +423,30 @@ int main(int argc, char** argv)
 void* operator new(size_t size)
 {
 	size_t bytes = size + sizeof(Header) + sizeof(Footer);
-	std::cout << "new " << size << " reqeusted, allocating " << bytes << std::endl;
+	//std::cout << "new " << size << " reqeusted, allocating " << bytes << std::endl;
 	char* pMem = (char*)malloc(bytes);
 
 	Header* pHeader = (Header*)pMem;
 	pHeader->size = size;
+	pHeader->tracker = TrackerManager::GetInstance().GetDefaultTracker();
+	pHeader->tracker->AddBytes(size);
+
+	Footer* pFooter = (Footer*)(pMem + sizeof(Header) + size);
+
+	void* pStartMemBlock = pMem + sizeof(Header);
+	return pStartMemBlock;
+}
+
+void* operator new(size_t size, Tracker* tracker)
+{
+	size_t bytes = size + sizeof(Header) + sizeof(Footer);
+	//std::cout << "new " << size << " reqeusted, allocating " << bytes << std::endl;
+	char* pMem = (char*)malloc(bytes);
+
+	Header* pHeader = (Header*)pMem;
+	pHeader->size = size;
+	pHeader->tracker = tracker;
+	pHeader->tracker->AddBytes(size);
 
 	Footer* pFooter = (Footer*)(pMem + sizeof(Header) + size);
 
@@ -489,6 +459,7 @@ void operator delete(void* pMem)
 	Header* pHeader = (Header*)((char*)pMem - sizeof(Header));
 	Footer* pFooter = (Footer*)((char*)pMem + pHeader->size);
 
-	std::cout << "freeing " << pHeader->size << " (" << (pHeader->size + sizeof(Header) + sizeof(Footer)) << ")" << std::endl;
+	//std::cout << "freeing " << pHeader->size << " (" << (pHeader->size + sizeof(Header) + sizeof(Footer)) << ")" << std::endl;
+	pHeader->tracker->RemoveBytes(pHeader->size);
 	free(pHeader);
 }
