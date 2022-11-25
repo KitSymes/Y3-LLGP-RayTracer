@@ -37,6 +37,9 @@
 #include <chrono>
 #include <mutex>
 #include "TrackerManager.h"
+#include "Vec3.h"
+#include "Sphere.h"
+#include "Octree.h"
 
 #if defined __linux__ || defined __APPLE__
 // "Compiled for Linux
@@ -59,93 +62,6 @@ struct Footer
 	int reserved;
 };
 
-template<typename T>
-class Vec3
-{
-public:
-	T x, y, z;
-	Vec3() : x(T(0)), y(T(0)), z(T(0)) {}
-	Vec3(T xx) : x(xx), y(xx), z(xx) {}
-	Vec3(T xx, T yy, T zz) : x(xx), y(yy), z(zz) {}
-	Vec3& normalize()
-	{
-		T nor2 = length2();
-		if (nor2 > 0) {
-			T invNor = 1 / sqrt(nor2);
-			x *= invNor, y *= invNor, z *= invNor;
-		}
-		return *this;
-	}
-	Vec3<T> operator * (const T& f) const { return Vec3<T>(x * f, y * f, z * f); }
-	Vec3<T> operator * (const Vec3<T>& v) const { return Vec3<T>(x * v.x, y * v.y, z * v.z); }
-	T dot(const Vec3<T>& v) const { return x * v.x + y * v.y + z * v.z; }
-	Vec3<T> operator - (const Vec3<T>& v) const { return Vec3<T>(x - v.x, y - v.y, z - v.z); }
-	Vec3<T> operator + (const Vec3<T>& v) const { return Vec3<T>(x + v.x, y + v.y, z + v.z); }
-	Vec3<T>& operator += (const Vec3<T>& v) { x += v.x, y += v.y, z += v.z; return *this; }
-	Vec3<T>& operator *= (const Vec3<T>& v) { x *= v.x, y *= v.y, z *= v.z; return *this; }
-	Vec3<T> operator - () const { return Vec3<T>(-x, -y, -z); }
-	T length2() const { return x * x + y * y + z * z; }
-	T length() const { return sqrt(length2()); }
-	friend std::ostream& operator << (std::ostream& os, const Vec3<T>& v)
-	{
-		os << "[" << v.x << " " << v.y << " " << v.z << "]";
-		return os;
-	}
-
-
-	static void* operator new[](size_t size)
-	{
-		std::cout << "new Vec3 " << size << std::endl;
-		char* pMem = (char*)malloc(size);
-		void* pStartMemBlock = pMem;
-		return pStartMemBlock;
-	}
-
-		static void operator delete[](void* pMem)
-	{
-		std::cout << "freeing a Vec3" << std::endl;
-		free(pMem);
-	}
-};
-
-typedef Vec3<float> Vec3f;
-
-class Sphere
-{
-public:
-	Vec3f center;                           /// position of the sphere
-	float radius, radius2;                  /// sphere radius and radius^2
-	Vec3f surfaceColor, emissionColor;      /// surface color and emission (light)
-	float transparency, reflection;         /// surface transparency and reflectivity
-	Sphere(
-		const Vec3f& c,
-		const float& r,
-		const Vec3f& sc,
-		const float& refl = 0,
-		const float& transp = 0,
-		const Vec3f& ec = 0) :
-		center(c), radius(r), radius2(r* r), surfaceColor(sc), emissionColor(ec),
-		transparency(transp), reflection(refl)
-	{ /* empty */
-	}
-	//[comment]
-	// Compute a ray-sphere intersection using the geometric solution
-	//[/comment]
-	bool intersect(const Vec3f& rayorig, const Vec3f& raydir, float& t0, float& t1) const
-	{
-		Vec3f l = center - rayorig;
-		float tca = l.dot(raydir);
-		if (tca < 0) return false;
-		float d2 = l.dot(l) - tca * tca;
-		if (d2 > radius2) return false;
-		float thc = sqrt(radius2 - d2);
-		t0 = tca - thc;
-		t1 = tca + thc;
-
-		return true;
-	}
-};
-
 //[comment]
 // This variable controls the maximum recursion depth
 //[/comment]
@@ -154,6 +70,100 @@ public:
 float mix(const float& a, const float& b, const float& mix)
 {
 	return b * mix + a * (1 - mix);
+}
+
+// https://www.researchgate.net/publication/2395157_An_Efficient_Parametric_Algorithm_for_Octree_Traversal
+unsigned char a;
+void ray_parameter(Octree* oct, Vec3f& rayOrig, Vec3f& rayDir)
+{
+	a = 0;
+	if (rayDir.x < 0.0)
+	{
+		rayOrig.x = oct->sizeX - rayOrig.x;
+		rayDir.x = -rayDir.x;
+		a |= 4;
+	}
+	if (rayDir.y < 0.0)
+	{
+		rayOrig.y = oct->sizeY - rayOrig.y;
+		rayDir.y = -rayDir.y;
+		a |= 2;
+	}
+	if (rayDir.z < 0.0)
+	{
+		rayOrig.z = oct->sizeZ - rayOrig.z;
+		rayDir.z = -rayDir.z;
+		a |= 1;
+	}
+
+	float tx0 = (oct->xmin - rayOrig.x) / rayDir.x;
+	float tx1 = (oct->xmax - rayOrig.x) / rayDir.x;
+	float ty0 = (oct->ymin - rayOrig.y) / rayDir.y;
+	float ty1 = (oct->ymax - rayOrig.y) / rayDir.y;
+	float tz0 = (oct->zmin - rayOrig.z) / rayDir.z;
+	float tz1 = (oct->zmax - rayOrig.z) / rayDir.z;
+
+	if (std::max(tx0, ty0, tz0) < std::min(tx1, ty1, tz1))
+		proc_subtree(tx0, ty0, tz0, tx1, ty1, tz1, oct->root);
+}
+
+void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float tz1, Octree* n)
+{
+	float txm, tym, tzm;
+	int currNode;
+
+	if (tx1 < 0.0 || ty1 < 0.0 || tz1 < 0.0)
+		return;
+
+	if (n == nullptr)
+	{
+		proc_terminal(n);
+		return;
+	}
+
+	txm = 0.5 * (tx0 + tx1);
+	tym = 0.5 * (ty0 + ty1);
+	tzm = 0.5 * (tz0 + tz1);
+
+	currNode = first_node(tx0, ty0, tz0, tx1, ty1, tz1);
+	while (currNode < 8)
+	{
+		switch (currNode)
+		{
+		case 0:
+			proc_subtree(tx0, ty0, tz0, txm, tym, tzm, n->son[a]);
+			currNode = new_node(txm, 4, tym, 2, tzm, 1);
+			break;
+		case 1:
+			proc_subtree(tx0, ty0, tzm, txm, tym, tz1, n->son[1 ^ a]);
+			currNode = new_node(txm, 5, tym, 3, tz1, 8);
+			break;
+		case 2:
+			proc_subtree(tx0, tym, tz0, txm, ty1, tzm, n->son[2^a]);
+			currNode = new_node(txm, 6, ty1, 8, tzm, 3);
+			break;
+		case 3:
+			proc_subtree(tx0, tym, tzm, txm, ty1, tz1, n->son[3 ^ a]);
+			currNode = new_node(txm, 7, ty1, 8, tz1, 8);
+			break;
+		case 4:
+			proc_subtree(txm, ty0, tz0, tx1, tym, tzm, n->son[4 ^ a]);
+			currNode = new_node(tx1, 8, tym, 6, tzm, 5);
+			break;
+		case 5:
+			proc_subtree(txm, ty0, tzm, 7, tz1, 8);
+			currNode = new_node(tx1, 8, tym, 7, tz1, 8);
+			break;
+		case 6:
+			proc_subtree(txm, tym, tz0, tx1, ty1, tzm, n->son[6 ^ a]);
+			currNode = new_node(tx1, 9, ty1, 8, tzm, 7);
+			break;
+		case 7:
+			proc_subtree(txm, tym, tzm, tx1, ty1, tz1, n->son[7 ^ a]);
+			currNode = 8;
+			break;
+		}
+	}
 }
 
 //[comment]
@@ -285,14 +295,38 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 	std::string tempString = ss.str();
 	char* filename = (char*)tempString.c_str();
 
+
+	/*using std::chrono::high_resolution_clock;
+	using std::chrono::duration_cast;
+	using std::chrono::duration;
+	using std::chrono::microseconds;
+	int count = 10;
+	int total = 0;
+	for (int i = 0; i < count; i++)
+	{
+		auto t1 = high_resolution_clock::now();*/
+
 	std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 	ofs << "P6\n" << width << " " << height << "\n255\n";
+
+	// 94460 average micro seconds
 	for (unsigned i = 0; i < width * height; ++i) {
 		ofs << (unsigned char)(std::min(float(1), image[i].x) * 255) <<
 			(unsigned char)(std::min(float(1), image[i].y) * 255) <<
 			(unsigned char)(std::min(float(1), image[i].z) * 255);
 	}
+
 	ofs.close();
+
+	/*auto t2 = high_resolution_clock::now();
+
+	auto t_int = duration_cast<microseconds>(t2 - t1);
+
+	std::cout << t_int.count() << " micro seconds\n";
+	total += t_int.count();
+}
+	std::cout << (total/count) << " average micro seconds\n";*/
+
 	delete[] image;
 }
 
@@ -393,18 +427,18 @@ int main(int argc, char** argv)
 {
 	// This sample only allows one choice per program execution. Feel free to improve upon this
 	srand(13);
-	//BasicRender();
+	BasicRender();
 	//SimpleShrinking();
 	//SmoothScaling();
 
 
-	using std::chrono::high_resolution_clock;
+	/*using std::chrono::high_resolution_clock;
 	using std::chrono::duration_cast;
 	using std::chrono::duration;
 	using std::chrono::milliseconds;
 
 	auto t1 = high_resolution_clock::now();
-	BasicRender();;
+	//BasicRender();;
 	auto t2 = high_resolution_clock::now();
 
 	// Getting number of milliseconds as an integer.
@@ -414,7 +448,7 @@ int main(int argc, char** argv)
 	duration<double, std::milli> ms_double = t2 - t1;
 
 	std::cout << ms_int.count() << "ms\n";
-	std::cout << ms_double.count() << "ms\n";
+	std::cout << ms_double.count() << "ms\n";*/
 
 
 	return 0;

@@ -1,4 +1,8 @@
 #pragma once
+#ifndef _TRACKER_H
+#define _TRACKER_H
+
+#define DEBUG false
 class Tracker
 {
 public:
@@ -12,4 +16,4 @@ public:
 private:
 	size_t _bytes;
 };
-
+#endif
