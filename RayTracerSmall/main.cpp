@@ -39,6 +39,7 @@
 #include "TrackerManager.h"
 #include "Vec3.h"
 #include "Sphere.h"
+#include "Structures.h"
 #include "Octree.h"
 
 #if defined __linux__ || defined __APPLE__
@@ -49,23 +50,12 @@
 #define INFINITY 1e8
 #endif
 
-struct Header
-{
-	int size;
-	Header* prev;
-	Header* next;
-	Tracker* tracker;
-};
-
-struct Footer
-{
-	int reserved;
-};
-
 //[comment]
 // This variable controls the maximum recursion depth
 //[/comment]
 #define MAX_RAY_DEPTH 5
+// This controls how many trace threads are generated, as there is one for every x lines
+#define TRACE_THREAD_PER_LINES 50
 
 float mix(const float& a, const float& b, const float& mix)
 {
@@ -73,7 +63,7 @@ float mix(const float& a, const float& b, const float& mix)
 }
 
 // https://www.researchgate.net/publication/2395157_An_Efficient_Parametric_Algorithm_for_Octree_Traversal
-unsigned char a;
+/*unsigned char a;
 void ray_parameter(Octree* oct, Vec3f& rayOrig, Vec3f& rayDir)
 {
 	a = 0;
@@ -151,7 +141,7 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 			currNode = new_node(tx1, 8, tym, 6, tzm, 5);
 			break;
 		case 5:
-			proc_subtree(txm, ty0, tzm, 7, tz1, 8);
+			proc_subtree(txm, ty0, tzm, tx1, tym, tz1, n->son[5 ^ a]);
 			currNode = new_node(tx1, 8, tym, 7, tz1, 8);
 			break;
 		case 6:
@@ -164,7 +154,7 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 			break;
 		}
 	}
-}
+}*/
 
 //[comment]
 // This is the main trace function. It takes a ray as argument (defined by its origin
@@ -259,6 +249,22 @@ Vec3f trace(
 	return surfaceColor + sphere->emissionColor;
 }
 
+void traceThreaded(const std::vector<Sphere>& spheres, std::mutex& mutex, Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+{
+	for (unsigned y = start; y < std::min(start + TRACE_THREAD_PER_LINES, height); ++y) {
+		for (unsigned x = 0; x < width; ++x) {
+			float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectRatio;
+			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
+			Vec3f raydir(xx, yy, -1);
+			raydir.normalize();
+			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0);
+			mutex.lock();
+			image[int(x + y * width)] = pixel;
+			mutex.unlock();
+		}
+	}
+}
+
 //[comment]
 // Main rendering function. We compute a camera ray for each pixel of the image
 // trace it and return a color. If the ray hits a sphere, we return the color of the
@@ -266,6 +272,8 @@ Vec3f trace(
 //[/comment]
 void render(const std::vector<Sphere>& spheres, int iteration)
 {
+	std::mutex mutex;
+
 	// quick and dirty
 	unsigned width = 640, height = 480;
 	// Recommended Testing Resolution
@@ -278,8 +286,9 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 	float fov = 30, aspectratio = width / float(height);
 	float angle = tan(M_PI * 0.5 * fov / 180.);
 
+	// pixel = x + y * width
 	// Trace rays
-	for (unsigned y = 0; y < height; ++y) {
+	/*for (unsigned y = 0; y < height; ++y) {
 		for (unsigned x = 0; x < width; ++x, ++pixel) {
 			float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
 			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
@@ -287,6 +296,23 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 			raydir.normalize();
 			*pixel = trace(Vec3f(0), raydir, spheres, 0);
 		}
+	}*/
+
+	std::vector<std::thread> traceThreads;
+
+	for (unsigned int y = 0; y < height; y += TRACE_THREAD_PER_LINES)
+	{
+		if (y > height)
+			continue;
+		traceThreads.push_back(std::thread(traceThreaded, 
+			//	spheres,			mutex,			image,			start,	width, height, invWidth, invHeight, aspectRatio, angle)
+				std::cref(spheres),	std::ref(mutex),std::ref(image),y,		width, height, invWidth, invHeight, aspectratio, angle));
+	}
+
+	for (std::thread& t : traceThreads)
+	{
+		if (t.joinable())
+			t.join();
 	}
 
 	// Save result to a PPM image (keep these flags if you compile under Windows)
@@ -354,6 +380,7 @@ void BasicRender()
 	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
 
 	LoadScene(spheres);
+	//TrackerManager::GetInstance().GetDefaultTracker()->Verify();
 
 	// This creates a file, titled 1.ppm in the current working directory
 	render(spheres, 1);
@@ -427,28 +454,31 @@ int main(int argc, char** argv)
 {
 	// This sample only allows one choice per program execution. Feel free to improve upon this
 	srand(13);
-	BasicRender();
+	//BasicRender();
 	//SimpleShrinking();
 	//SmoothScaling();
 
 
-	/*using std::chrono::high_resolution_clock;
+	using std::chrono::high_resolution_clock;
 	using std::chrono::duration_cast;
 	using std::chrono::duration;
 	using std::chrono::milliseconds;
 
-	auto t1 = high_resolution_clock::now();
-	//BasicRender();;
-	auto t2 = high_resolution_clock::now();
+	int count = 10;
+	int total = 0;
+	for (int i = 0; i < count; i++)
+	{
+		auto t1 = high_resolution_clock::now();
+		BasicRender();
+		auto t2 = high_resolution_clock::now();
 
-	// Getting number of milliseconds as an integer.
-	auto ms_int = duration_cast<milliseconds>(t2 - t1);
+		auto t_int = duration_cast<milliseconds>(t2 - t1);
 
-	// Getting number of milliseconds as a double.
-	duration<double, std::milli> ms_double = t2 - t1;
+		std::cout << t_int.count() << " ms seconds\n";
+		total += t_int.count();
+	}
 
-	std::cout << ms_int.count() << "ms\n";
-	std::cout << ms_double.count() << "ms\n";*/
+	std::cout << (total / count) << " average ms seconds\n";
 
 
 	return 0;
@@ -460,12 +490,15 @@ void* operator new(size_t size)
 	//std::cout << "new " << size << " reqeusted, allocating " << bytes << std::endl;
 	char* pMem = (char*)malloc(bytes);
 
-	Header* pHeader = (Header*)pMem;
-	pHeader->size = size;
-	pHeader->tracker = TrackerManager::GetInstance().GetDefaultTracker();
-	pHeader->tracker->AddBytes(size);
+	Header* header = (Header*)pMem;
+	header->size = size;
+	header->next = nullptr;
+	header->prev = nullptr;
+	header->checkvalue = 0xDEAD;
+	TrackerManager::GetInstance().GetDefaultTracker()->Add(header);
 
-	Footer* pFooter = (Footer*)(pMem + sizeof(Header) + size);
+	Footer* footer = (Footer*)(pMem + sizeof(Header) + size);
+	footer->checkvalue = 0xC0DE;
 
 	void* pStartMemBlock = pMem + sizeof(Header);
 	return pStartMemBlock;
@@ -477,12 +510,15 @@ void* operator new(size_t size, Tracker* tracker)
 	//std::cout << "new " << size << " reqeusted, allocating " << bytes << std::endl;
 	char* pMem = (char*)malloc(bytes);
 
-	Header* pHeader = (Header*)pMem;
-	pHeader->size = size;
-	pHeader->tracker = tracker;
-	pHeader->tracker->AddBytes(size);
+	Header* header = (Header*)pMem;
+	header->size = size;
+	header->next = nullptr;
+	header->prev = nullptr;
+	header->checkvalue = 0xDEAD;
+	tracker->Add(header);
 
-	Footer* pFooter = (Footer*)(pMem + sizeof(Header) + size);
+	Footer* footer = (Footer*)(pMem + sizeof(Header) + size);
+	footer->checkvalue = 0xC0DE;
 
 	void* pStartMemBlock = pMem + sizeof(Header);
 	return pStartMemBlock;
@@ -490,10 +526,10 @@ void* operator new(size_t size, Tracker* tracker)
 
 void operator delete(void* pMem)
 {
-	Header* pHeader = (Header*)((char*)pMem - sizeof(Header));
-	Footer* pFooter = (Footer*)((char*)pMem + pHeader->size);
+	Header* header = (Header*)((char*)pMem - sizeof(Header));
+	Footer* footer = (Footer*)((char*)pMem + header->size);
 
-	//std::cout << "freeing " << pHeader->size << " (" << (pHeader->size + sizeof(Header) + sizeof(Footer)) << ")" << std::endl;
-	pHeader->tracker->RemoveBytes(pHeader->size);
-	free(pHeader);
+	//std::cout << "freeing " << header->size << " (" << (header->size + sizeof(Header) + sizeof(Footer)) << ")" << std::endl;
+	header->tracker->Remove(header);
+	free(header);
 }

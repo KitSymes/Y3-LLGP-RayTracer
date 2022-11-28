@@ -77,7 +77,7 @@ Sphere* Octree::Trace(std::vector<Sphere*> predecessors, const Vec3f& rayorig, c
 		{
 			for (int j = i + 1; j < predecessors.size(); j++)
 			{
-				if (predecessors[i]->IntersectsLine(predecessors[j]))
+				//if (predecessors[i]->IntersectsLine(predecessors[j]))
 				{
 					return predecessors[i];
 				}

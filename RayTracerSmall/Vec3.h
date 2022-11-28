@@ -40,7 +40,7 @@ public:
 
 	static void* operator new[](size_t size)
 	{
-		std::cout << "new Vec3 " << size << std::endl;
+		//std::cout << "new Vec3 " << size << std::endl;
 		char* pMem = (char*)malloc(size);
 		void* pStartMemBlock = pMem;
 		return pStartMemBlock;
@@ -48,7 +48,7 @@ public:
 
 	static void operator delete[](void* pMem)
 	{
-		std::cout << "freeing a Vec3" << std::endl;
+		//std::cout << "freeing a Vec3" << std::endl;
 		free(pMem);
 	}
 };

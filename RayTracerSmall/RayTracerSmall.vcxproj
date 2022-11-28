@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="Octree.h" />
     <ClInclude Include="Sphere.h" />
+    <ClInclude Include="Structures.h" />
     <ClInclude Include="Tracker.h" />
     <ClInclude Include="TrackerManager.h" />
     <ClInclude Include="Vec3.h" />

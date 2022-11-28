@@ -1,0 +1,47 @@
+Before
+After making new threads for each file
+
+Simple:
+4765ms
+2906ms
+
+Smooth:
+54352ms
+14601ms
+
+
+Basic + No trace threading
+2451ms
+2451.05ms
+Basic + y * trace threading
+4093ms
+4093.25ms
+Basic + w * x trace threading
+- ran too long to bother letting it finish
+
+Average if 10 Basic renders with trace threads per x lines:
+- 100:	742
+- 200:	958
+- 50:	641
+- 25:	803
+- 40:	715
+- 60:	721
+- 55:	723
+
+Average of 100 Basic renders with using intersect function
+- Geometric:	658, first 1050
+- Analytic:		706, first 989
+
+-- turned off vec3 debug
+
+Average of 10 Analytic + Thread per 50 lines
+Simple:			1489, first 1799
+Smooth: 		19573, first 21469
+
+Average of 10 Geometric + Thread per 50 lines
+Simple:			1363, first 1677
+Smooth: 		18022, first 22304
+
+Average of 10 Geo + 50l/t +
+- iterate through from first:	568, first 762
+- store last:					559, first 751
