@@ -47,11 +47,13 @@ void Tracker::Add(Header* header)
 void Tracker::Remove(Header* header)
 {
 	if (header->checkvalue != 0xDEAD)
-		std::cout << "Remove Incorrect Header checkvalue: " << header->checkvalue << " not " << 0xDEAD << std::endl;
-	Footer* footer = (Footer*)(((char*)header)+sizeof(Header) + header->size);
+		std::cout << "Tracker#Remove: Incorrect Header checkvalue: " << header->checkvalue << " not " << 0xDEAD << std::endl;
+	Footer* footer = (Footer*)(((char*)header) + sizeof(Header) + header->size);
 	if (footer->checkvalue != 0xC0DE)
-		std::cout << "Incorrect Footer checkvalue: " << footer->checkvalue << " not " << 0xC0DE << std::endl;
+		std::cout << "Tracker#Remove: Incorrect Footer checkvalue: " << footer->checkvalue << " not " << 0xC0DE << std::endl;
+
 	RemoveBytes(header->size);
+
 	if (header->prev != nullptr)
 		header->prev->next = header->next;
 	if (header->next != nullptr)

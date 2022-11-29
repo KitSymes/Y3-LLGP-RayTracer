@@ -74,45 +74,12 @@ public:
 		return true;
 	}
 
-	bool IntersectsLine(const Vec3f& rayorig, const Vec3f& raydir, float& distanceSq)
-	{
-		// Closest point on the line to position
-		Vec3f AB = raydir;
-		Vec3f AP = center - rayorig;
-		float lengthSqAB = AB.x * AB.x + AB.y * AB.y;
-		float t = (AP.x * AB.x + AP.y * AB.y) / lengthSqAB;
-		if (t < 0)
-			t = 0;
-		if (t > 1)
-			t = 1;
+	bool IntersectsLine(const Vec3f& rayorig, const Vec3f& raydir, float& distanceSq);
 
-		Vec3f closest = rayorig + AB * t;
+	bool IntersectsLine(Vec3f start, Vec3f end);
 
-		if ((closest - center).length2() > radius2)
-			return false;
+	void* operator new(size_t size);
 
-		distanceSq = closest.length2();
-
-		return true;
-	}
-
-	bool IntersectsLine(Vec3f start, Vec3f end)
-	{
-		// Closest point on the line to position (includes past start and end point), but that shouldn't matter
-		Vec3f AB = end - start;
-		Vec3f AP = center - start;
-		float lengthSqrAB = AB.x * AB.x + AB.y * AB.y;
-		float t = (AP.x * AB.x + AP.y * AB.y) / lengthSqrAB;
-		if (t < 0)
-			t = 0;
-		if (t > 1)
-			t = 1;
-		Vec3f closest = start + AB * t;
-
-		Vec3f temp = closest - center;
-		float mag = (temp.x * temp.x) + (temp.y * temp.y) + (temp.z * temp.z);
-
-		return mag <= radius2;
-	}
+	void operator delete(void* pMem);
 };
 #endif

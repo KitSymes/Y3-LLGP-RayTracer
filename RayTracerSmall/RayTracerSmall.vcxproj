@@ -145,6 +145,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Octree.cpp" />
+    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="Tracker.cpp" />
     <ClCompile Include="TrackerManager.cpp" />
   </ItemGroup>
