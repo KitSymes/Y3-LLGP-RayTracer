@@ -55,7 +55,7 @@
 //[/comment]
 #define MAX_RAY_DEPTH 5
 // This controls how many trace threads are generated, as there is one for every x lines
-#define TRACE_THREAD_PER_LINES 50
+#define TRACE_THREAD_PER_LINES 60
 
 float mix(const float& a, const float& b, const float& mix)
 {
@@ -274,13 +274,12 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 {
 	std::mutex mutex;
 
-	// quick and dirty
-	unsigned width = 640, height = 480;
 	// Recommended Testing Resolution
-	//unsigned width = 640, height = 480;
+	unsigned width = 640, height = 480;
 
 	// Recommended Production Resolution
 	//unsigned width = 1920, height = 1080;
+
 	Vec3f* image = new Vec3f[width * height], * pixel = image;
 	float invWidth = 1 / float(width), invHeight = 1 / float(height);
 	float fov = 30, aspectratio = width / float(height);

@@ -4,6 +4,7 @@
 
 #define DEBUG false
 
+#include <mutex>
 struct Header;
 
 class Tracker
@@ -15,13 +16,14 @@ public:
 	void Add(Header* header);
 	void Remove(Header* header);
 
-	void Verify();
+	void Verify(Header* header);
 
 	size_t GetByteCount();
 private:
 	size_t _bytes;
 	Header* _first;
 	Header* _last;
+	std::mutex m;
 
 	void AddBytes(size_t bytes);
 	void RemoveBytes(size_t bytes);
