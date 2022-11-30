@@ -249,7 +249,7 @@ Vec3f trace(
 	return surfaceColor + sphere->emissionColor;
 }
 
-void traceThreaded(const std::vector<Sphere>& spheres, std::mutex& mutex, Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+void traceThreaded(const std::vector<Sphere>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
 {
 	for (unsigned y = start; y < std::min(start + TRACE_THREAD_PER_LINES, height); ++y) {
 		for (unsigned x = 0; x < width; ++x) {
@@ -258,9 +258,9 @@ void traceThreaded(const std::vector<Sphere>& spheres, std::mutex& mutex, Vec3f*
 			Vec3f raydir(xx, yy, -1);
 			raydir.normalize();
 			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0);
-			mutex.lock();
+			//mutex.lock();
 			image[int(x + y * width)] = pixel;
-			mutex.unlock();
+			//mutex.unlock();
 		}
 	}
 }
@@ -305,7 +305,7 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 			continue;
 		traceThreads.push_back(std::thread(traceThreaded, 
 			//	spheres,			mutex,			image,			start,	width, height, invWidth, invHeight, aspectRatio, angle)
-				std::cref(spheres),	std::ref(mutex),std::ref(image),y,		width, height, invWidth, invHeight, aspectratio, angle));
+				std::cref(spheres),	/*std::ref(mutex),*/std::ref(image),y,		width, height, invWidth, invHeight, aspectratio, angle));
 	}
 
 	for (std::thread& t : traceThreads)
@@ -361,14 +361,15 @@ void LoadScene(std::vector<Sphere>& spheres)
 	nlohmann::json data = nlohmann::json::parse(f);
 
 	for (nlohmann::json::iterator it = data["spheres"].begin(); it != data["spheres"].end(); ++it) {
-		Vec3f centre = Vec3f(it.value()["center"][0], it.value()["center"][1], it.value()["center"][2]);
-		Vec3f surfaceColor = Vec3f(it.value()["surfaceColor"][0], it.value()["surfaceColor"][1], it.value()["surfaceColor"][2]);
-		Vec3f emissionColor = Vec3f(it.value()["emissionColor"][0], it.value()["emissionColor"][1], it.value()["emissionColor"][2]);
+		auto sphere = it.value();
+		Vec3f centre = Vec3f(sphere["center"][0], sphere["center"][1], sphere["center"][2]);
+		Vec3f surfaceColor = Vec3f(sphere["surfaceColor"][0], sphere["surfaceColor"][1], sphere["surfaceColor"][2]);
+		Vec3f emissionColor = Vec3f(sphere["emissionColor"][0], sphere["emissionColor"][1], sphere["emissionColor"][2]);
 		spheres.push_back(Sphere(centre,
-			it.value()["radius"],
+			sphere["radius"],
 			surfaceColor,
-			it.value()["reflection"],
-			it.value()["transparency"],
+			sphere["reflection"],
+			sphere["transparency"],
 			emissionColor));
 	}
 }
