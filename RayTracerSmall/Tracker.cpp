@@ -60,6 +60,8 @@ void Tracker::Remove(Header* header)
 		header->next->prev = header->prev;
 	if (header == _first)
 		_first = header->next;
+	if (header == _last)
+		_last = header->prev;
 }
 
 void Tracker::Verify()
