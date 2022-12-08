@@ -47,5 +47,5 @@ Average of 10 Geo + 50l/t +
 - store last:					559, first 751
 
 Octree stuff
-Before
+Before	541
 Octree no simplifying	703

@@ -169,8 +169,8 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 Vec3f trace(
 	const Vec3f& rayorig,
 	const Vec3f& raydir,
-	const int& depth)
 	const std::vector<Sphere*>& spheres,
+	const int& depth)
 {
 	//if (raydir.length() != 1) std::cerr << "Error " << raydir << std::endl;
 	float tnear = INFINITY;
@@ -249,7 +249,7 @@ Vec3f trace(
 	return surfaceColor + sphere->emissionColor;
 }
 
-void traceThreaded(const std::vector<Sphere>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+void traceThreaded(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
 {
 	for (unsigned y = start; y < std::min(start + TRACE_THREAD_PER_LINES, height); ++y) {
 		for (unsigned x = 0; x < width; ++x) {
