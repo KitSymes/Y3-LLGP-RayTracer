@@ -54,7 +54,7 @@ void* Sphere::operator new(size_t size)
 	header->next = nullptr;
 	header->prev = nullptr;
 	header->checkvalue = 0xDEAD;
-	TrackerManager::GetInstance().GetDefaultTracker()->Add(header);
+	TrackerManager::GetInstance().GetSphereTracker()->Add(header);
 
 	Footer* footer = (Footer*)(pMem + sizeof(Header) + size);
 	footer->checkvalue = 0xC0DE;

@@ -55,7 +55,7 @@
 //[/comment]
 #define MAX_RAY_DEPTH 5
 // This controls how many trace threads are generated, as there is one for every x lines
-#define TRACE_THREAD_PER_LINES 60
+#define TRACE_THREAD_PER_LINES 50
 
 float mix(const float& a, const float& b, const float& mix)
 {
@@ -169,8 +169,8 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 Vec3f trace(
 	const Vec3f& rayorig,
 	const Vec3f& raydir,
-	const std::vector<Sphere>& spheres,
 	const int& depth)
+	const std::vector<Sphere*>& spheres,
 {
 	//if (raydir.length() != 1) std::cerr << "Error " << raydir << std::endl;
 	float tnear = INFINITY;
@@ -178,11 +178,11 @@ Vec3f trace(
 	// find intersection of this ray with the sphere in the scene
 	for (unsigned i = 0; i < spheres.size(); ++i) {
 		float t0 = INFINITY, t1 = INFINITY;
-		if (spheres[i].intersect(rayorig, raydir, t0, t1)) {
+		if (spheres[i]->intersect(rayorig, raydir, t0, t1)) {
 			if (t0 < 0) t0 = t1;
 			if (t0 < tnear) {
 				tnear = t0;
-				sphere = &spheres[i];
+				sphere = spheres[i];
 			}
 		}
 	}
@@ -226,22 +226,22 @@ Vec3f trace(
 	else {
 		// it's a diffuse object, no need to raytrace any further
 		for (unsigned i = 0; i < spheres.size(); ++i) {
-			if (spheres[i].emissionColor.x > 0) {
+			if (spheres[i]->emissionColor.x > 0) {
 				// this is a light
 				Vec3f transmission = 1;
-				Vec3f lightDirection = spheres[i].center - phit;
+				Vec3f lightDirection = spheres[i]->center - phit;
 				lightDirection.normalize();
 				for (unsigned j = 0; j < spheres.size(); ++j) {
 					if (i != j) {
 						float t0, t1;
-						if (spheres[j].intersect(phit + nhit * bias, lightDirection, t0, t1)) {
+						if (spheres[j]->intersect(phit + nhit * bias, lightDirection, t0, t1)) {
 							transmission = 0;
 							break;
 						}
 					}
 				}
 				surfaceColor += sphere->surfaceColor * transmission *
-					std::max(float(0), nhit.dot(lightDirection)) * spheres[i].emissionColor;
+					std::max(float(0), nhit.dot(lightDirection)) * spheres[i]->emissionColor;
 			}
 		}
 	}
@@ -270,7 +270,7 @@ void traceThreaded(const std::vector<Sphere>& spheres, /*std::mutex& mutex,*/ Ve
 // trace it and return a color. If the ray hits a sphere, we return the color of the
 // sphere at the intersection point, else we return the background color.
 //[/comment]
-void render(const std::vector<Sphere>& spheres, int iteration)
+void render(const std::vector<Sphere*>& spheres, int iteration)
 {
 	std::mutex mutex;
 
@@ -355,17 +355,17 @@ void render(const std::vector<Sphere>& spheres, int iteration)
 	delete[] image;
 }
 
-void LoadScene(std::vector<Sphere>& spheres)
+void LoadScene(std::vector<Sphere*>& spheres)
 {
 	std::ifstream f("scene.json");
 	nlohmann::json data = nlohmann::json::parse(f);
 
 	for (nlohmann::json::iterator it = data["spheres"].begin(); it != data["spheres"].end(); ++it) {
 		auto sphere = it.value();
-		Vec3f centre = Vec3f(sphere["center"][0], sphere["center"][1], sphere["center"][2]);
+		Vec3f centre = Vec3f(sphere["centre"][0], sphere["centre"][1], sphere["centre"][2]);
 		Vec3f surfaceColor = Vec3f(sphere["surfaceColor"][0], sphere["surfaceColor"][1], sphere["surfaceColor"][2]);
 		Vec3f emissionColor = Vec3f(sphere["emissionColor"][0], sphere["emissionColor"][1], sphere["emissionColor"][2]);
-		spheres.push_back(Sphere(centre,
+		spheres.push_back(new Sphere(centre,
 			sphere["radius"],
 			surfaceColor,
 			sphere["reflection"],
@@ -376,7 +376,7 @@ void LoadScene(std::vector<Sphere>& spheres)
 
 void BasicRender()
 {
-	std::vector<Sphere> spheres;
+	std::vector<Sphere*> spheres;
 	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
 
 	LoadScene(spheres);
@@ -385,65 +385,78 @@ void BasicRender()
 	// This creates a file, titled 1.ppm in the current working directory
 	render(spheres, 1);
 
+	for (Sphere* sphere : spheres)
+		delete sphere;
 }
 
 void SimpleShrinking()
 {
-	std::vector<Sphere> spheres;
+	std::vector<Sphere*> garbage;
 	std::vector<std::thread> renderThreads;
 	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
 
-	LoadScene(spheres);
-
 	for (int i = 0; i < 4; i++)
 	{
+		std::vector<Sphere*> spheres;
+		LoadScene(spheres);
+
 		if (i == 0)
 		{
-			spheres[1].radius = 4;
-			spheres[1].radius2 = 16;
+			spheres[1]->radius = 4;
+			spheres[1]->radius2 = 16;
 		}
 		else if (i == 1)
 		{
-			spheres[1].radius = 3;
-			spheres[1].radius2 = 9;
+			spheres[1]->radius = 3;
+			spheres[1]->radius2 = 9;
 		}
 		else if (i == 2)
 		{
-			spheres[1].radius = 2;
-			spheres[1].radius2 = 4;
+			spheres[1]->radius = 2;
+			spheres[1]->radius2 = 4;
 		}
 		else if (i == 3)
 		{
-			spheres[1].radius = 1;
-			spheres[1].radius2 = 1;
+			spheres[1]->radius = 1;
+			spheres[1]->radius2 = 1;
 		}
 
 		renderThreads.push_back(std::thread(render, spheres, i));
+		//render(spheres, i);
+		garbage.insert(std::end(garbage), std::begin(spheres), std::end(spheres));
 	}
 
 	for (std::thread& thread : renderThreads)
 		if (thread.joinable())
 			thread.join();
+
+	for (Sphere* sphere : garbage)
+		delete sphere;
 }
 
 void SmoothScaling()
 {
-	std::vector<Sphere> spheres;
+	std::vector<Sphere*> garbage;
 	std::vector<std::thread> renderThreads;
-	// Vector structure for Sphere (position, radius, surface color, reflectivity, transparency, emission color)
-
-	LoadScene(spheres);
 
 	for (float r = 0; r <= 100; r++)
 	{
-		spheres[1].radius = r / 100;
-		spheres[1].radius2 = (r / 100) * (r / 100);
+		std::vector<Sphere*> spheres;
+		LoadScene(spheres);
+
+		spheres[1]->radius = r / 100;
+		spheres[1]->radius2 = (r / 100) * (r / 100);
 		renderThreads.push_back(std::thread(render, spheres, r));
+		//render(spheres, r);
+		garbage.insert(std::end(garbage), std::begin(spheres), std::end(spheres));
 	}
 
 	for (std::thread& thread : renderThreads)
 		if (thread.joinable())
 			thread.join();
+
+	for (Sphere* sphere : garbage)
+		delete sphere;
 }
 //[comment]
 // In the main function, we will create the scene which is composed of 5 spheres

@@ -36,10 +36,10 @@ void Tracker::Add(Header* header)
 
 
 		bool b1 = (_last != _first && _last->prev->next == nullptr);
-		bool b2 = _last->next != nullptr;
-		bool b5 = _last->next == nullptr;
+		//bool b2 = _last->next != nullptr;
+		//bool b5 = _last->next == nullptr;
 		bool b4 = _last->next;
-		bool b6 = !_last->next;
+		//bool b6 = !_last->next;
 
 		if (b1 || b4)
 		{

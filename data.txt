@@ -2,12 +2,12 @@ Before
 After making new threads for each file
 
 Simple:
-4765ms
-2906ms
+3106
+1191
 
 Smooth:
-54352ms
-14601ms
+37155
+11941
 
 
 Basic + No trace threading
@@ -20,17 +20,17 @@ Basic + w * x trace threading
 - ran too long to bother letting it finish
 
 Average if 10 Basic renders with trace threads per x lines:
-- 100:	742
-- 200:	958
-- 50:	641
-- 25:	803
-- 40:	715
-- 60:	721
-- 55:	723
+100	742
+200	958
+50	641
+25	803
+40	715
+60	721
+55	723
 
 Average of 100 Basic renders with using intersect function
-- Geometric:	658, first 1050
-- Analytic:		706, first 989
+Geometric:	658, first 1050
+Analytic:	706, first 989
 
 -- turned off vec3 debug
 
@@ -45,3 +45,7 @@ Smooth: 		18022, first 22304
 Average of 10 Geo + 50l/t +
 - iterate through from first:	568, first 762
 - store last:					559, first 751
+
+Octree stuff
+Before
+Octree no simplifying	703
