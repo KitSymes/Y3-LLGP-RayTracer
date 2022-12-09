@@ -56,6 +56,7 @@
 #define MAX_RAY_DEPTH 5
 // This controls how many trace threads are generated, as there is one for every x lines
 #define TRACE_THREAD_PER_LINES 50
+#define SUBDIVIDE_COUNT 2
 
 float mix(const float& a, const float& b, const float& mix)
 {
@@ -249,7 +250,7 @@ Vec3f trace(
 	return surfaceColor + sphere->emissionColor;
 }
 
-void traceThreaded(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+void traceThreadedOld(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
 {
 	for (unsigned y = start; y < std::min(start + TRACE_THREAD_PER_LINES, height); ++y) {
 		for (unsigned x = 0; x < width; ++x) {
@@ -261,6 +262,22 @@ void traceThreaded(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*/ V
 			//mutex.lock();
 			image[int(x + y * width)] = pixel;
 			//mutex.unlock();
+		}
+	}
+}
+
+void traceThreaded(const std::vector<Sphere*>& spheres, Vec3f* image,
+	unsigned int startX, unsigned int startY, unsigned int sizeX, unsigned int sizeY,
+	unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+{
+	for (unsigned y = startY; y < height && y < startY + sizeY; ++y) {
+		for (unsigned x = startX; x < width && x < startX + sizeX; ++x) {
+			float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectRatio;
+			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
+			Vec3f raydir(xx, yy, -1);
+			raydir.normalize();
+			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0);
+			image[int(x + y * width)] = pixel;
 		}
 	}
 }
@@ -299,13 +316,28 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 
 	std::vector<std::thread> traceThreads;
 
-	for (unsigned int y = 0; y < height; y += TRACE_THREAD_PER_LINES)
+	/*for (unsigned int y = 0; y < height; y += TRACE_THREAD_PER_LINES)
 	{
 		if (y > height)
 			continue;
-		traceThreads.push_back(std::thread(traceThreaded, 
+		traceThreads.push_back(std::thread(traceThreadedOld,
 			//	spheres,			mutex,			image,			start,	width, height, invWidth, invHeight, aspectRatio, angle)
-				std::cref(spheres),	/*std::ref(mutex),*/std::ref(image),y,		width, height, invWidth, invHeight, aspectratio, angle));
+			std::cref(spheres),	/*std::ref(mutex),*///std::ref(image), y, width, height, invWidth, invHeight, aspectratio, angle));
+	//}
+
+
+	int threads = pow(4, SUBDIVIDE_COUNT);
+	int split = pow(2, SUBDIVIDE_COUNT);
+
+	for (unsigned int i = 0; i < threads; i++)
+	{
+		float sizeX = width / split;
+		float sizeY = height / split;
+		float startX = (i / split) * sizeX;
+		float startY = (i % split) * sizeY;
+		traceThreads.push_back(std::thread(traceThreaded, std::cref(spheres), std::ref(image),
+			startX, startY, sizeX, sizeY,
+			width, height, invWidth, invHeight, aspectratio, angle));
 	}
 
 	for (std::thread& t : traceThreads)
@@ -458,6 +490,7 @@ void SmoothScaling()
 	for (Sphere* sphere : garbage)
 		delete sphere;
 }
+
 //[comment]
 // In the main function, we will create the scene which is composed of 5 spheres
 // and 1 light (which is also a sphere). Then, once the scene description is complete
