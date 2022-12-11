@@ -46,6 +46,15 @@ Average of 10 Geo + 50l/t +
 - iterate through from first:	568, first 762
 - store last:					559, first 751
 
+Switching to image subdivision instead of lines/thread
+Subdivide count	640x480	1920x1080
+0	1146	6195
+1	613	2817
+2	608	2643
+3	584	2678
+4	650	2794
+5	1238	3332
+
 Octree stuff
 Before	541
 Octree no simplifying	703

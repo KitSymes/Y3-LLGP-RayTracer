@@ -56,7 +56,7 @@
 #define MAX_RAY_DEPTH 5
 // This controls how many trace threads are generated, as there is one for every x lines
 #define TRACE_THREAD_PER_LINES 50
-#define SUBDIVIDE_COUNT 2
+#define SUBDIVIDE_COUNT 3
 
 float mix(const float& a, const float& b, const float& mix)
 {
