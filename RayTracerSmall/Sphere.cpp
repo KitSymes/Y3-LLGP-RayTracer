@@ -27,7 +27,9 @@ bool Sphere::IntersectsLine(const Vec3f& rayorig, const Vec3f& raydir, float& di
 bool Sphere::IntersectsPlane(Vec3f pointOnPlane, Vec3f planeNormal)
 {
 	// Based on https://stackoverflow.com/questions/22093749/c-plane-sphere-collision-detection
-	return (center - pointOnPlane).dot(planeNormal) <= radius2;
+	Vec3f a = center - pointOnPlane;
+	float b = (a).dot(planeNormal);
+	return abs((center - pointOnPlane).dot(planeNormal)) <= radius;
 }
 
 void* Sphere::operator new(size_t size)
