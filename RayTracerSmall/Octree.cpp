@@ -45,26 +45,26 @@ void Octree::Create(std::vector<Sphere*> spheres, float sideLength)
 
 	std::vector<Sphere*> temp[2][2][2];
 
-	for (Sphere* go : spheres)
+	for (Sphere* sphere : spheres)
 	{
-		if (go->IntersectsPlane(_centre, Vec3f(1.0f, 0.0f, 0.0f)))
+		if (sphere->IntersectsPlane(_centre, Vec3f(1.0f, 0.0f, 0.0f)))
 		{
-			_leafObjects.push_back(go);
+			_leafObjects.push_back(sphere);
 			continue;
 		}
-		if (go->IntersectsPlane(_centre, Vec3f(0.0f, 1.0f, 0.0f)))
+		if (sphere->IntersectsPlane(_centre, Vec3f(0.0f, 1.0f, 0.0f)))
 		{
-			_leafObjects.push_back(go);
+			_leafObjects.push_back(sphere);
 			continue;
 		}
-		if (go->IntersectsPlane(_centre, Vec3f(0.0f, 0.0f, 1.0f)))
+		if (sphere->IntersectsPlane(_centre, Vec3f(0.0f, 0.0f, 1.0f)))
 		{
-			_leafObjects.push_back(go);
+			_leafObjects.push_back(sphere);
 			continue;
 		}
 
-		Vec3f position = go->center;
-		temp[(position.x > _centre.x)][(position.y > _centre.y)][(position.z > _centre.z)].push_back(go);
+		Vec3f position = sphere->center;
+		temp[(position.x > _centre.x)][(position.y > _centre.y)][(position.z > _centre.z)].push_back(sphere);
 	}
 
 	for (int i = 0; i < 2; i++)
@@ -84,7 +84,6 @@ Sphere* Octree::Trace(const Vec3f& rayOrig, const Vec3f& rayDir, float tx0, floa
 
 	if (_leafObjects.size() > 0)
 	{
-		//Sphere* temp = nullptr;
 		float t0 = INFINITY, t1 = INFINITY;
 		for (unsigned i = 0; i < _leafObjects.size(); ++i) {
 			if (_leafObjects[i]->intersect(rayOrig, rayDir, t0, t1)) {
@@ -99,36 +98,6 @@ Sphere* Octree::Trace(const Vec3f& rayOrig, const Vec3f& rayDir, float tx0, floa
 
 	if (tx1 < 0.0 || ty1 < 0.0 || tz1 < 0.0)
 		return sphere;
-
-	/*unsigned char a = 0;
-	Vec3f dir = rayDir;
-	Vec3f orig = rayOrig;
-
-	if (rayDir.x < 0.0)
-	{
-		orig.x = sideLength - rayOrig.x;
-		dir.x = -rayDir.x;
-		a |= 4;
-	}
-	if (rayDir.y < 0.0)
-	{
-		orig.y = sideLength - rayOrig.y;
-		dir.y = -rayDir.y;
-		a |= 2;
-	}
-	if (rayDir.z < 0.0)
-	{
-		orig.z = sideLength - rayOrig.z;
-		dir.z = -rayDir.z;
-		a |= 1;
-	}
-
-	float tx0 = (xmin - orig.x) / dir.x;
-	float tx1 = (xmax - orig.x) / dir.x;
-	float ty0 = (ymin - orig.y) / dir.y;
-	float ty1 = (ymax - orig.y) / dir.y;
-	float tz0 = (zmin - orig.z) / dir.z;
-	float tz1 = (zmax - orig.z) / dir.z;*/
 
 	float txm = 0.5 * (tx0 + tx1);
 	float tym = 0.5 * (ty0 + ty1);
@@ -257,17 +226,6 @@ Sphere* Octree::Trace(const Vec3f& rayOrig, const Vec3f& rayDir, float tx0, floa
 			break;
 		}
 	}
-	/*for (int i = 0; i < 2; i++)
-		for (int j = 0; j < 2; j++)
-			for (int k = 0; k < 2; k++)
-				if (_children[i][j][k] != nullptr)
-				{
-					Sphere* temp = _children[i][j][k]->Trace(rayOrig, rayDir, tnear);
-					if (temp != nullptr)
-					{
-						sphere = temp;
-					}
-				}*/
 	return sphere;
 }
 

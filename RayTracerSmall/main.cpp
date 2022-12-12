@@ -63,100 +63,6 @@ float mix(const float& a, const float& b, const float& mix)
 	return b * mix + a * (1 - mix);
 }
 
-// https://www.researchgate.net/publication/2395157_An_Efficient_Parametric_Algorithm_for_Octree_Traversal
-/*unsigned char a;
-void ray_parameter(Octree* oct, Vec3f& rayOrig, Vec3f& rayDir)
-{
-	a = 0;
-	if (rayDir.x < 0.0)
-	{
-		rayOrig.x = oct->sideLength - rayOrig.x;
-		rayDir.x = -rayDir.x;
-		a |= 4;
-	}
-	if (rayDir.y < 0.0)
-	{
-		rayOrig.y = oct->sideLength - rayOrig.y;
-		rayDir.y = -rayDir.y;
-		a |= 2;
-	}
-	if (rayDir.z < 0.0)
-	{
-		rayOrig.z = oct->sideLength - rayOrig.z;
-		rayDir.z = -rayDir.z;
-		a |= 1;
-	}
-
-	float tx0 = (oct->xmin - rayOrig.x) / rayDir.x;
-	float tx1 = (oct->xmax - rayOrig.x) / rayDir.x;
-	float ty0 = (oct->ymin - rayOrig.y) / rayDir.y;
-	float ty1 = (oct->ymax - rayOrig.y) / rayDir.y;
-	float tz0 = (oct->zmin - rayOrig.z) / rayDir.z;
-	float tz1 = (oct->zmax - rayOrig.z) / rayDir.z;
-
-	if (std::max(tx0, ty0, tz0) < std::min(tx1, ty1, tz1))
-		proc_subtree(tx0, ty0, tz0, tx1, ty1, tz1, oct);
-}
-
-void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float tz1, Octree* n)
-{
-	float txm, tym, tzm;
-	int currNode;
-
-	if (tx1 < 0.0 || ty1 < 0.0 || tz1 < 0.0)
-		return;
-
-	if (n == nullptr)
-	{
-		proc_terminal(n);
-		return;
-	}
-
-	txm = 0.5 * (tx0 + tx1);
-	tym = 0.5 * (ty0 + ty1);
-	tzm = 0.5 * (tz0 + tz1);
-
-	currNode = first_node(tx0, ty0, tz0, tx1, ty1, tz1);
-	while (currNode < 8)
-	{
-		switch (currNode)
-		{
-		case 0: // MIN X Y Z
-			proc_subtree(tx0, ty0, tz0, txm, tym, tzm, n->son[a]);
-			currNode = new_node(txm, 4, tym, 2, tzm, 1);
-			break;
-		case 1: // MIN X Y MAX Z
-			proc_subtree(tx0, ty0, tzm, txm, tym, tz1, n->son[1 ^ a]);
-			currNode = new_node(txm, 5, tym, 3, tz1, 8);
-			break;
-		case 2: // MIN X Z MAX Y
-			proc_subtree(tx0, tym, tz0, txm, ty1, tzm, n->son[2^a]);
-			currNode = new_node(txm, 6, ty1, 8, tzm, 3);
-			break;
-		case 3: // MIN X MAX Y Z
-			proc_subtree(tx0, tym, tzm, txm, ty1, tz1, n->son[3 ^ a]);
-			currNode = new_node(txm, 7, ty1, 8, tz1, 8);
-			break;
-		case 4: // MIN Y Z MAX X
-			proc_subtree(txm, ty0, tz0, tx1, tym, tzm, n->son[4 ^ a]);
-			currNode = new_node(tx1, 8, tym, 6, tzm, 5);
-			break;
-		case 5: // MIN Y MAX X Z
-			proc_subtree(txm, ty0, tzm, tx1, tym, tz1, n->son[5 ^ a]);
-			currNode = new_node(tx1, 8, tym, 7, tz1, 8);
-			break;
-		case 6: // MIN Z MAX X Y
-			proc_subtree(txm, tym, tz0, tx1, ty1, tzm, n->son[6 ^ a]);
-			currNode = new_node(tx1, 9, ty1, 8, tzm, 7);
-			break;
-		case 7: // MAX X Y Z
-			proc_subtree(txm, tym, tzm, tx1, ty1, tz1, n->son[7 ^ a]);
-			currNode = 8;
-			break;
-		}
-	}
-}*/
-
 //[comment]
 // This is the main trace function. It takes a ray as argument (defined by its origin
 // and direction). We test if this ray intersects any of the geometry in the scene.
@@ -340,29 +246,7 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 	float fov = 30, aspectratio = width / float(height);
 	float angle = tan(M_PI * 0.5 * fov / 180.);
 
-	// pixel = x + y * width
-	// Trace rays
-	/*for (unsigned y = 0; y < height; ++y) {
-		for (unsigned x = 0; x < width; ++x, ++pixel) {
-			float xx = (2 * ((x + 0.5) * invWidth) - 1) * angle * aspectratio;
-			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
-			Vec3f raydir(xx, yy, -1);
-			raydir.normalize();
-			*pixel = trace(Vec3f(0), raydir, spheres, 0);
-		}
-	}*/
-
 	std::vector<std::thread> traceThreads;
-
-	/*for (unsigned int y = 0; y < height; y += TRACE_THREAD_PER_LINES)
-	{
-		if (y > height)
-			continue;
-		traceThreads.push_back(std::thread(traceThreadedOld,
-			//	spheres,			mutex,			image,			start,	width, height, invWidth, invHeight, aspectRatio, angle)
-			std::cref(spheres),	/*std::ref(mutex),*///std::ref(image), y, width, height, invWidth, invHeight, aspectratio, angle));
-			//}
-
 
 	int threads = pow(4, SUBDIVIDE_COUNT);
 	int split = pow(2, SUBDIVIDE_COUNT);
@@ -397,18 +281,6 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 	ss << "./spheres" << iteration << ".ppm";
 	std::string tempString = ss.str();
 	char* filename = (char*)tempString.c_str();
-
-
-	/*using std::chrono::high_resolution_clock;
-	using std::chrono::duration_cast;
-	using std::chrono::duration;
-	using std::chrono::microseconds;
-	int count = 10;
-	int total = 0;
-	for (int i = 0; i < count; i++)
-	{
-		auto t1 = high_resolution_clock::now();*/
-
 	std::ofstream ofs(filename, std::ios::out | std::ios::binary);
 	ofs << "P6\n" << width << " " << height << "\n255\n";
 
@@ -420,15 +292,6 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 	}
 
 	ofs.close();
-
-	/*auto t2 = high_resolution_clock::now();
-
-	auto t_int = duration_cast<microseconds>(t2 - t1);
-
-	std::cout << t_int.count() << " micro seconds\n";
-	total += t_int.count();
-}
-	std::cout << (total/count) << " average micro seconds\n";*/
 
 	delete[] image;
 }
@@ -500,7 +363,6 @@ void SimpleShrinking()
 		}
 
 		renderThreads.push_back(std::thread(render, spheres, i));
-		//render(spheres, i);
 		garbage.insert(std::end(garbage), std::begin(spheres), std::end(spheres));
 	}
 
@@ -525,7 +387,6 @@ void SmoothScaling()
 		spheres[1]->radius = r / 100;
 		spheres[1]->radius2 = (r / 100) * (r / 100);
 		renderThreads.push_back(std::thread(render, spheres, r));
-		//render(spheres, r);
 		garbage.insert(std::end(garbage), std::begin(spheres), std::end(spheres));
 	}
 
