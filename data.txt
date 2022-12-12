@@ -56,5 +56,6 @@ Subdivide count	640x480	1920x1080
 5	1238	3332
 
 Octree stuff
-Before	541
-Octree no simplifying	703
+Before	584
+Octree no simplifying	762
+Octree	725

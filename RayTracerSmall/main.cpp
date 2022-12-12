@@ -70,19 +70,19 @@ void ray_parameter(Octree* oct, Vec3f& rayOrig, Vec3f& rayDir)
 	a = 0;
 	if (rayDir.x < 0.0)
 	{
-		rayOrig.x = oct->sizeX - rayOrig.x;
+		rayOrig.x = oct->sideLength - rayOrig.x;
 		rayDir.x = -rayDir.x;
 		a |= 4;
 	}
 	if (rayDir.y < 0.0)
 	{
-		rayOrig.y = oct->sizeY - rayOrig.y;
+		rayOrig.y = oct->sideLength - rayOrig.y;
 		rayDir.y = -rayDir.y;
 		a |= 2;
 	}
 	if (rayDir.z < 0.0)
 	{
-		rayOrig.z = oct->sizeZ - rayOrig.z;
+		rayOrig.z = oct->sideLength - rayOrig.z;
 		rayDir.z = -rayDir.z;
 		a |= 1;
 	}
@@ -95,7 +95,7 @@ void ray_parameter(Octree* oct, Vec3f& rayOrig, Vec3f& rayDir)
 	float tz1 = (oct->zmax - rayOrig.z) / rayDir.z;
 
 	if (std::max(tx0, ty0, tz0) < std::min(tx1, ty1, tz1))
-		proc_subtree(tx0, ty0, tz0, tx1, ty1, tz1, oct->root);
+		proc_subtree(tx0, ty0, tz0, tx1, ty1, tz1, oct);
 }
 
 void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float tz1, Octree* n)
@@ -121,35 +121,35 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 	{
 		switch (currNode)
 		{
-		case 0:
+		case 0: // MIN X Y Z
 			proc_subtree(tx0, ty0, tz0, txm, tym, tzm, n->son[a]);
 			currNode = new_node(txm, 4, tym, 2, tzm, 1);
 			break;
-		case 1:
+		case 1: // MIN X Y MAX Z
 			proc_subtree(tx0, ty0, tzm, txm, tym, tz1, n->son[1 ^ a]);
 			currNode = new_node(txm, 5, tym, 3, tz1, 8);
 			break;
-		case 2:
+		case 2: // MIN X Z MAX Y
 			proc_subtree(tx0, tym, tz0, txm, ty1, tzm, n->son[2^a]);
 			currNode = new_node(txm, 6, ty1, 8, tzm, 3);
 			break;
-		case 3:
+		case 3: // MIN X MAX Y Z
 			proc_subtree(tx0, tym, tzm, txm, ty1, tz1, n->son[3 ^ a]);
 			currNode = new_node(txm, 7, ty1, 8, tz1, 8);
 			break;
-		case 4:
+		case 4: // MIN Y Z MAX X
 			proc_subtree(txm, ty0, tz0, tx1, tym, tzm, n->son[4 ^ a]);
 			currNode = new_node(tx1, 8, tym, 6, tzm, 5);
 			break;
-		case 5:
+		case 5: // MIN Y MAX X Z
 			proc_subtree(txm, ty0, tzm, tx1, tym, tz1, n->son[5 ^ a]);
 			currNode = new_node(tx1, 8, tym, 7, tz1, 8);
 			break;
-		case 6:
+		case 6: // MIN Z MAX X Y
 			proc_subtree(txm, tym, tz0, tx1, ty1, tzm, n->son[6 ^ a]);
 			currNode = new_node(tx1, 9, ty1, 8, tzm, 7);
 			break;
-		case 7:
+		case 7: // MAX X Y Z
 			proc_subtree(txm, tym, tzm, tx1, ty1, tz1, n->son[7 ^ a]);
 			currNode = 8;
 			break;
@@ -168,16 +168,50 @@ void proc_subtree(float tx0, float ty0, float tz0, float tx1, float ty1, float t
 // the background color.
 //[/comment]
 Vec3f trace(
-	const Vec3f& rayorig,
-	const Vec3f& raydir,
+	const Vec3f& rayOrig,
+	const Vec3f& rayDir,
 	const std::vector<Sphere*>& spheres,
-	const int& depth)
+	const int& depth,
+	Octree* oct)
 {
 	//if (raydir.length() != 1) std::cerr << "Error " << raydir << std::endl;
 	float tnear = INFINITY;
 	const Sphere* sphere = NULL;
 	// find intersection of this ray with the sphere in the scene
-	for (unsigned i = 0; i < spheres.size(); ++i) {
+
+	unsigned char xor = 0;
+	Vec3f dir = rayDir;
+	Vec3f orig = rayOrig;
+
+	if (rayDir.x < 0.0)
+	{
+		orig.x = oct->sideLength - rayOrig.x;
+		dir.x = -rayDir.x;
+		xor |= 4;
+	}
+	if (rayDir.y < 0.0)
+	{
+		orig.y = oct->sideLength - rayOrig.y;
+		dir.y = -rayDir.y;
+		xor |= 2;
+	}
+	if (rayDir.z < 0.0)
+	{
+		orig.z = oct->sideLength - rayOrig.z;
+		dir.z = -rayDir.z;
+		xor |= 1;
+	}
+
+	float tx0 = (oct->xmin - orig.x) / dir.x;
+	float tx1 = (oct->xmax - orig.x) / dir.x;
+	float ty0 = (oct->ymin - orig.y) / dir.y;
+	float ty1 = (oct->ymax - orig.y) / dir.y;
+	float tz0 = (oct->zmin - orig.z) / dir.z;
+	float tz1 = (oct->zmax - orig.z) / dir.z;
+
+	//if (std::max(std::max(tx0, ty0), tz0) < std::min(std::min(tx1, ty1), tz1))
+	sphere = oct->Trace(rayOrig, rayDir, tx0, ty0, tz0, tx1, ty1, tz1, xor, tnear);
+	/*for (unsigned i = 0; i < spheres.size(); ++i) {
 		float t0 = INFINITY, t1 = INFINITY;
 		if (spheres[i]->intersect(rayorig, raydir, t0, t1)) {
 			if (t0 < 0) t0 = t1;
@@ -186,11 +220,11 @@ Vec3f trace(
 				sphere = spheres[i];
 			}
 		}
-	}
+	}*/
 	// if there's no intersection return black or background color
 	if (!sphere) return Vec3f(2);
 	Vec3f surfaceColor = 0; // color of the ray/surfaceof the object intersected by the ray
-	Vec3f phit = rayorig + raydir * tnear; // point of intersection
+	Vec3f phit = rayOrig + rayDir * tnear; // point of intersection
 	Vec3f nhit = phit - sphere->center; // normal at the intersection point
 	nhit.normalize(); // normalize normal direction
 	// If the normal and the view direction are not opposite to each other
@@ -199,25 +233,25 @@ Vec3f trace(
 	// positive.
 	float bias = 1e-4; // add some bias to the point from which we will be tracing
 	bool inside = false;
-	if (raydir.dot(nhit) > 0) nhit = -nhit, inside = true;
+	if (rayDir.dot(nhit) > 0) nhit = -nhit, inside = true;
 	if ((sphere->transparency > 0 || sphere->reflection > 0) && depth < MAX_RAY_DEPTH) {
-		float facingratio = -raydir.dot(nhit);
+		float facingratio = -rayDir.dot(nhit);
 		// change the mix value to tweak the effect
 		float fresneleffect = mix(pow(1 - facingratio, 3), 1, 0.1);
 		// compute reflection direction (not need to normalize because all vectors
 		// are already normalized)
-		Vec3f refldir = raydir - nhit * 2 * raydir.dot(nhit);
+		Vec3f refldir = rayDir - nhit * 2 * rayDir.dot(nhit);
 		refldir.normalize();
-		Vec3f reflection = trace(phit + nhit * bias, refldir, spheres, depth + 1);
+		Vec3f reflection = trace(phit + nhit * bias, refldir, spheres, depth + 1, oct);
 		Vec3f refraction = 0;
 		// if the sphere is also transparent compute refraction ray (transmission)
 		if (sphere->transparency) {
 			float ior = 1.1, eta = (inside) ? ior : 1 / ior; // are we inside or outside the surface?
-			float cosi = -nhit.dot(raydir);
+			float cosi = -nhit.dot(rayDir);
 			float k = 1 - eta * eta * (1 - cosi * cosi);
-			Vec3f refrdir = raydir * eta + nhit * (eta * cosi - sqrt(k));
+			Vec3f refrdir = rayDir * eta + nhit * (eta * cosi - sqrt(k));
 			refrdir.normalize();
-			refraction = trace(phit - nhit * bias, refrdir, spheres, depth + 1);
+			refraction = trace(phit - nhit * bias, refrdir, spheres, depth + 1, oct);
 		}
 		// the result is a mix of reflection and refraction (if the sphere is transparent)
 		surfaceColor = (
@@ -250,7 +284,7 @@ Vec3f trace(
 	return surfaceColor + sphere->emissionColor;
 }
 
-void traceThreadedOld(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*/ Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+void traceThreadedOld(const std::vector<Sphere*>& spheres, Vec3f* image, unsigned int start, unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle, Octree* oct)
 {
 	for (unsigned y = start; y < std::min(start + TRACE_THREAD_PER_LINES, height); ++y) {
 		for (unsigned x = 0; x < width; ++x) {
@@ -258,7 +292,7 @@ void traceThreadedOld(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*
 			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
 			Vec3f raydir(xx, yy, -1);
 			raydir.normalize();
-			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0);
+			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0, oct);
 			//mutex.lock();
 			image[int(x + y * width)] = pixel;
 			//mutex.unlock();
@@ -268,7 +302,8 @@ void traceThreadedOld(const std::vector<Sphere*>& spheres, /*std::mutex& mutex,*
 
 void traceThreaded(const std::vector<Sphere*>& spheres, Vec3f* image,
 	unsigned int startX, unsigned int startY, unsigned int sizeX, unsigned int sizeY,
-	unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle)
+	unsigned width, unsigned height, float invWidth, float invHeight, float aspectRatio, float angle,
+	Octree* oct)
 {
 	for (unsigned y = startY; y < height && y < startY + sizeY; ++y) {
 		for (unsigned x = startX; x < width && x < startX + sizeX; ++x) {
@@ -276,12 +311,12 @@ void traceThreaded(const std::vector<Sphere*>& spheres, Vec3f* image,
 			float yy = (1 - 2 * ((y + 0.5) * invHeight)) * angle;
 			Vec3f raydir(xx, yy, -1);
 			raydir.normalize();
-			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0);
+			Vec3f pixel = trace(Vec3f(0), raydir, spheres, 0, oct);
 			image[int(x + y * width)] = pixel;
 		}
 	}
 }
-
+#define DEBUG false
 //[comment]
 // Main rendering function. We compute a camera ray for each pixel of the image
 // trace it and return a color. If the ray hits a sphere, we return the color of the
@@ -290,6 +325,9 @@ void traceThreaded(const std::vector<Sphere*>& spheres, Vec3f* image,
 void render(const std::vector<Sphere*>& spheres, int iteration)
 {
 	std::mutex mutex;
+
+	Octree* oct = new Octree(Vec3f());
+	oct->Create(spheres, 50.0f);
 
 	// Recommended Testing Resolution
 	unsigned width = 640, height = 480;
@@ -323,12 +361,18 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 		traceThreads.push_back(std::thread(traceThreadedOld,
 			//	spheres,			mutex,			image,			start,	width, height, invWidth, invHeight, aspectRatio, angle)
 			std::cref(spheres),	/*std::ref(mutex),*///std::ref(image), y, width, height, invWidth, invHeight, aspectratio, angle));
-	//}
+			//}
 
 
 	int threads = pow(4, SUBDIVIDE_COUNT);
 	int split = pow(2, SUBDIVIDE_COUNT);
 
+#if DEBUG
+	traceThreads.push_back(std::thread(traceThreaded, std::cref(spheres), std::ref(image),
+		586, 186, 5, 5,
+		width, height, invWidth, invHeight, aspectratio, angle,
+		oct));
+#else
 	for (unsigned int i = 0; i < threads; i++)
 	{
 		float sizeX = width / split;
@@ -337,8 +381,10 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 		float startY = (i % split) * sizeY;
 		traceThreads.push_back(std::thread(traceThreaded, std::cref(spheres), std::ref(image),
 			startX, startY, sizeX, sizeY,
-			width, height, invWidth, invHeight, aspectratio, angle));
+			width, height, invWidth, invHeight, aspectratio, angle,
+			oct));
 	}
+#endif
 
 	for (std::thread& t : traceThreads)
 	{
@@ -511,6 +557,9 @@ int main(int argc, char** argv)
 	using std::chrono::milliseconds;
 
 	int count = 10;
+#if DEBUG
+	count = 1;
+#endif
 	int total = 0;
 	for (int i = 0; i < count; i++)
 	{

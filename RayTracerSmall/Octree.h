@@ -17,7 +17,15 @@ public:
 	Octree(Vec3f centre);
 	~Octree();
 
-	void Create(std::vector<Sphere*> colliders, float sideLength);
-	Sphere* Trace(std::vector<Sphere*> predecessors, const Vec3f& rayorig, const Vec3f& raydir);
+	void Create(std::vector<Sphere*> spheres, float sideLength);
+	Sphere* Trace(const Vec3f& rayorig, const Vec3f& raydir, float tx0, float ty0, float tz0, float tx1, float ty1, float tz1, unsigned char xor, float& tnear);
+
+	float sideLength;
+	float xmin, xmax;
+	float ymin, ymax;
+	float zmin, zmax;
+
+	int new_node(float txm, int yzExit, float tym, int xzExot, float tzm, int xyExit);
+	Octree* childFromLabel(int label);
 };
 #endif
