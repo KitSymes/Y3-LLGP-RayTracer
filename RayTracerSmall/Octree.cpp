@@ -145,77 +145,77 @@ Sphere* Octree::Trace(const Vec3f& rayOrig, const Vec3f& rayDir, float tx0, floa
 		switch (node)
 		{
 		case 0: // MIN X Y Z
-			next = childFromLabel(node ^ xor);
+			next = ChildFromLabel(node ^ xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, tx0, ty0, tz0, txm, tym, tzm, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(txm, 4, tym, 2, tzm, 1);
+			node = NextNode(txm, 4, tym, 2, tzm, 1);
 			break;
 		case 1: // MIN X Y MAX Z
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, tx0, ty0, tzm, txm, tym, tz1, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(txm, 5, tym, 3, tz1, 8);
+			node = NextNode(txm, 5, tym, 3, tz1, 8);
 			break;
 		case 2: // MIN X Z MAX Y
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, tx0, tym, tz0, txm, ty1, tzm, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(txm, 6, ty1, 8, tzm, 3);
+			node = NextNode(txm, 6, ty1, 8, tzm, 3);
 			break;
 		case 3: // MIN X MAX Y Z
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, tx0, tym, tzm, txm, ty1, tz1, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(txm, 7, ty1, 8, tz1, 8);
+			node = NextNode(txm, 7, ty1, 8, tz1, 8);
 			break;
 		case 4: // MIN Y Z MAX X
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, txm, ty0, tz0, tx1, tym, tzm, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(tx1, 8, tym, 6, tzm, 5);
+			node = NextNode(tx1, 8, tym, 6, tzm, 5);
 			break;
 		case 5: // MIN Y MAX X Z
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, txm, ty0, tzm, tx1, tym, tz1, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(tx1, 8, tym, 7, tz1, 8);
+			node = NextNode(tx1, 8, tym, 7, tz1, 8);
 			break;
 		case 6: // MIN Z MAX X Y
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, txm, tym, tz0, tx1, ty1, tzm, xor, tnear);
 				if (temp != nullptr)
 					return temp;
 			}
-			node = new_node(tx1, 9, ty1, 8, tzm, 7);
+			node = NextNode(tx1, 9, ty1, 8, tzm, 7);
 			break;
 		case 7: // MAX X Y Z
-			next = childFromLabel(node^xor);
+			next = ChildFromLabel(node^xor);
 			if (next != nullptr)
 			{
 				temp = next->Trace(rayOrig, rayDir, txm, tym, tzm, tx1, ty1, tz1, xor, tnear);
@@ -229,7 +229,7 @@ Sphere* Octree::Trace(const Vec3f& rayOrig, const Vec3f& rayDir, float tx0, floa
 	return sphere;
 }
 
-int Octree::new_node(float txm, int yzExit, float tym, int xzExit, float tzm, int xyExit)
+int Octree::NextNode(float txm, int yzExit, float tym, int xzExit, float tzm, int xyExit)
 {
 	if (txm < tym && txm < tzm)
 		return yzExit;
@@ -239,7 +239,7 @@ int Octree::new_node(float txm, int yzExit, float tym, int xzExit, float tzm, in
 		return xyExit;
 }
 
-Octree* Octree::childFromLabel(int label)
+Octree* Octree::ChildFromLabel(int label)
 {
 	switch (label)
 	{

@@ -58,4 +58,5 @@ Subdivide count	640x480	1920x1080
 Octree stuff
 Before	584
 Octree no simplifying	762
-Octree	725
+Octree	659
+Scene with 3/4 spheres in different quadrants	511

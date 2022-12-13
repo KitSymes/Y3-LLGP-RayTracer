@@ -25,7 +25,8 @@ public:
 	float ymin, ymax;
 	float zmin, zmax;
 
-	int new_node(float txm, int yzExit, float tym, int xzExot, float tzm, int xyExit);
-	Octree* childFromLabel(int label);
+	int NextNode(float txm, int yzExit, float tym, int xzExot, float tzm, int xyExit);
+	Octree* ChildFromLabel(int label);
+	Vec3f GetCentre() { return _centre; }
 };
 #endif

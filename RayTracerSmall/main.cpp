@@ -57,6 +57,9 @@
 // This controls how many trace threads are generated, as there is one for every x lines
 #define TRACE_THREAD_PER_LINES 50
 #define SUBDIVIDE_COUNT 3
+#define DEBUG false
+#define OCTREE true
+#define COUNT 10
 
 float mix(const float& a, const float& b, const float& mix)
 {
@@ -91,19 +94,19 @@ Vec3f trace(
 
 	if (rayDir.x < 0.0)
 	{
-		orig.x = oct->sideLength - rayOrig.x;
+		orig.x = oct->GetCentre().x - rayOrig.x;
 		dir.x = -rayDir.x;
 		xor |= 4;
 	}
 	if (rayDir.y < 0.0)
 	{
-		orig.y = oct->sideLength - rayOrig.y;
+		orig.y = oct->GetCentre().y -rayOrig.y;
 		dir.y = -rayDir.y;
 		xor |= 2;
 	}
 	if (rayDir.z < 0.0)
 	{
-		orig.z = oct->sideLength - rayOrig.z;
+		orig.z = oct->GetCentre().z -rayOrig.z;
 		dir.z = -rayDir.z;
 		xor |= 1;
 	}
@@ -115,18 +118,21 @@ Vec3f trace(
 	float tz0 = (oct->zmin - orig.z) / dir.z;
 	float tz1 = (oct->zmax - orig.z) / dir.z;
 
-	//if (std::max(std::max(tx0, ty0), tz0) < std::min(std::min(tx1, ty1), tz1))
-	sphere = oct->Trace(rayOrig, rayDir, tx0, ty0, tz0, tx1, ty1, tz1, xor, tnear);
-	/*for (unsigned i = 0; i < spheres.size(); ++i) {
+#if OCTREE
+	if (std::max(std::max(tx0, ty0), tz0) < std::min(std::min(tx1, ty1), tz1))
+		sphere = oct->Trace(rayOrig, rayDir, tx0, ty0, tz0, tx1, ty1, tz1, xor, tnear);
+#else
+	for (unsigned i = 0; i < spheres.size(); ++i) {
 		float t0 = INFINITY, t1 = INFINITY;
-		if (spheres[i]->intersect(rayorig, raydir, t0, t1)) {
+		if (spheres[i]->intersect(rayOrig, rayDir, t0, t1)) {
 			if (t0 < 0) t0 = t1;
 			if (t0 < tnear) {
 				tnear = t0;
 				sphere = spheres[i];
 			}
 		}
-	}*/
+	}
+#endif
 	// if there's no intersection return black or background color
 	if (!sphere) return Vec3f(2);
 	Vec3f surfaceColor = 0; // color of the ray/surfaceof the object intersected by the ray
@@ -222,7 +228,7 @@ void traceThreaded(const std::vector<Sphere*>& spheres, Vec3f* image,
 		}
 	}
 }
-#define DEBUG false
+
 //[comment]
 // Main rendering function. We compute a camera ray for each pixel of the image
 // trace it and return a color. If the ray hits a sphere, we return the color of the
@@ -253,7 +259,7 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 
 #if DEBUG
 	traceThreads.push_back(std::thread(traceThreaded, std::cref(spheres), std::ref(image),
-		586, 186, 5, 5,
+		457, 50, 5, 5,
 		width, height, invWidth, invHeight, aspectratio, angle,
 		oct));
 #else
@@ -417,10 +423,7 @@ int main(int argc, char** argv)
 	using std::chrono::duration;
 	using std::chrono::milliseconds;
 
-	int count = 10;
-#if DEBUG
-	count = 1;
-#endif
+	int count = COUNT;
 	int total = 0;
 	for (int i = 0; i < count; i++)
 	{
