@@ -34,21 +34,6 @@ void Tracker::Add(Header* header)
 		if (_last->checkvalue != 0xDEAD)
 			std::cout << "ERROR" << std::endl;
 
-
-		bool b1 = (_last != _first && _last->prev->next == nullptr);
-		//bool b2 = _last->next != nullptr;
-		//bool b5 = _last->next == nullptr;
-		bool b4 = _last->next;
-		//bool b6 = !_last->next;
-
-		if (b1 || b4)
-		{
-			//_last->next = nullptr;
-			//bool b3 = _last->next != nullptr;
-
-			std::cout << (void*)_last->next;
-			std::cout << "ERROR " << (_last->next != nullptr) << " " << (_last != _first && _last->prev->next == nullptr) << std::endl;
-		}
 		header->prev = _last;
 		_last->next = header;
 	}
@@ -62,24 +47,13 @@ void Tracker::Add(Header* header)
 		if (header->prev->checkvalue != 0xDEAD)
 			Verify(header);
 
-	/*// Pointing to a header pointer, so it's pointing to _first or ->next
-	Header** pointerToHeaderPointer = &_first;
-	Header* pointerToPreviousHeader = nullptr;
-
-	while (*pointerToHeaderPointer != nullptr)
-	{
-		pointerToPreviousHeader = *pointerToHeaderPointer;
-		pointerToHeaderPointer = &pointerToPreviousHeader->next;
-	}
-	(*pointerToHeaderPointer) = header;
-	if (pointerToPreviousHeader != nullptr)
-		header->prev = pointerToPreviousHeader;*/
 	m.unlock();
 }
 
 void Tracker::Remove(Header* header)
 {
 	m.lock();
+
 	if (header->checkvalue != 0xDEAD)
 		std::cout << "Tracker#Remove: Incorrect Header checkvalue: " << header->checkvalue << " not " << 0xDEAD << std::endl;
 	Footer* footer = (Footer*)(((char*)header) + sizeof(Header) + header->size);
@@ -96,14 +70,6 @@ void Tracker::Remove(Header* header)
 		if (header->next && header->next->checkvalue != 0xDEAD)
 				Verify(header);
 
-		/*if (header->next == nullptr)
-		{
-			header->prev->next = nullptr;
-			bool b2 = header->prev->next != nullptr;
-			if (b2)
-				std::cout << "";
-		}
-		else*/
 		header->prev->next = header->next;
 	}
 	if (header->next)
@@ -113,6 +79,7 @@ void Tracker::Remove(Header* header)
 
 		if (header->prev && header->prev->checkvalue != 0xDEAD)
 			Verify(header);
+
 		header->next->prev = header->prev;
 	}
 
@@ -121,6 +88,7 @@ void Tracker::Remove(Header* header)
 
 	if (header == _last)
 		_last = header->prev;
+
 	m.unlock();
 }
 

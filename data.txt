@@ -55,6 +55,17 @@ Subdivide count	640x480	1920x1080
 4	650	2794
 5	1238	3332
 
+(cuts + 1)^2 threads
+0	1238
+1	559
+2	611
+3	650
+4	619
+5	570
+6	589
+7	584
+8	599
+
 Octree stuff
 Before	584
 Octree no simplifying	762

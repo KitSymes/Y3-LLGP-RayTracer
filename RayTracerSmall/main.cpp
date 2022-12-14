@@ -256,6 +256,8 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 
 	int threads = pow(4, SUBDIVIDE_COUNT);
 	int split = pow(2, SUBDIVIDE_COUNT);
+	//int threads = pow(SUBDIVIDE_COUNT + 1, 2);
+	//int split = SUBDIVIDE_COUNT + 1;
 
 #if DEBUG
 	traceThreads.push_back(std::thread(traceThreaded, std::cref(spheres), std::ref(image),
