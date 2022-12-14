@@ -88,6 +88,7 @@ Vec3f trace(
 	const Sphere* sphere = NULL;
 	// find intersection of this ray with the sphere in the scene
 
+#if OCTREE
 	unsigned char xor = 0;
 	Vec3f dir = rayDir;
 	Vec3f orig = rayOrig;
@@ -118,7 +119,6 @@ Vec3f trace(
 	float tz0 = (oct->zmin - orig.z) / dir.z;
 	float tz1 = (oct->zmax - orig.z) / dir.z;
 
-#if OCTREE
 	if (std::max(std::max(tx0, ty0), tz0) < std::min(std::min(tx1, ty1), tz1))
 		sphere = oct->Trace(rayOrig, rayDir, tx0, ty0, tz0, tx1, ty1, tz1, xor, tnear);
 #else
@@ -302,6 +302,7 @@ void render(const std::vector<Sphere*>& spheres, int iteration)
 	ofs.close();
 
 	delete[] image;
+	delete oct;
 }
 
 void LoadScene(std::vector<Sphere*>& spheres)
