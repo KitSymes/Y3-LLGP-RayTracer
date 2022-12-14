@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 # PPM Output Files
 *.ppm
+/quadtree representation.blend1
